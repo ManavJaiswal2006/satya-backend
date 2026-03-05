@@ -30,19 +30,21 @@ export async function POST(req) {
     });
 
     const prompt = `
-      You are an expert fact-checker with access to Google Search. 
-      Analyze the following text extracted from a webpage. Use Google Search to verify the claims made in the text against reliable, real-world sources.
-      Identify any major factual inaccuracies, fake news, or misinformation.
+      You are a highly skeptical, ruthless fact-checker. You MUST use Google Search to verify the claims in the text below.
       
-      Return ONLY a JSON object with the following structure:
+      DO NOT assume the text is true just because it looks like an encyclopedia or news article. 
+      Actively search for lies, fake news, and altered facts. Pay extreme attention to any claims about sports rules (like match length), team colors, or recent "breaking news".
+      If even ONE claim contradicts reality, you must flag it as misinformation.
+      
+      Return ONLY a JSON object with this exact structure:
       {
-        "containsMisinformation": boolean,
+        "containsMisinformation": boolean, // MUST be true if you find ANY lie
         "riskLevel": "Low" | "Medium" | "High",
         "flaggedClaims": [
           {
-            "claim": "The false statement",
-            "correction": "The actual fact based on your web search",
-            "explanation": "Brief explanation of why it is false, citing what you found"
+            "claim": "The exact false statement found in the text",
+            "correction": "The actual truth based on your web search",
+            "explanation": "Brief explanation of why it is false"
           }
         ]
       }
