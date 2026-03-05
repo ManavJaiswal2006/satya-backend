@@ -1,7 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 export async function OPTIONS() {
   return new Response(null, {
     status: 200,
@@ -18,8 +14,9 @@ export async function POST(req) {
     const { text } = await req.json();
     if (!text) return new Response(JSON.stringify({ error: 'No text provided' }), { status: 400 });
 
-    // FIX: Removed the googleSearch tool that was causing the 500 crash!
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const apiKey = process.env.GEMINI_API_KEY;
+    // We bypass the SDK and call the 1.5-flash model directly over the web!
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const prompt = `
       You are a RUTHLESS fact-checker. 
@@ -37,19 +34,39 @@ export async function POST(req) {
           }
         ]
       }
+      
+      TEXT TO CHECK:
+      ${text}
     `;
 
-    const result = await model.generateContent(prompt + "\n\nTEXT TO CHECK:\n" + text);
-    const responseText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+    // Make a direct web request to Google's servers
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
 
+    const data = await response.json();
+    
+    // Catch any API errors directly
+    if (!response.ok) {
+       return new Response(JSON.stringify({ error: data.error?.message || 'Direct Gemini API Error' }), { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    // Extract and clean the AI's response
+    const responseText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
     return new Response(responseText, {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
+
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Access-Control-Allow-Origin': '*' }
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
+      headers: { 'Access-Control-Allow-Origin': '*' } 
     });
   }
 }
