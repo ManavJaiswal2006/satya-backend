@@ -18,18 +18,20 @@ export async function POST(req) {
     // We bypass the SDK and call the 1.5-flash model directly over the web!
 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const prompt = `
-      You are a RUTHLESS fact-checker. 
-      Analyze the text provided by the user. If it claims FC Barcelona is changing to white kits, or UEFA match rules are changing to 45 minutes/15 players, FLAG IT IMMEDIATELY as fake news.
+      You are an expert fact-checker and digital literacy educator. 
+      Analyze the text provided. Look for ANY factual inaccuracies, fake news, outdated information, or logical fallacies.
+      
+      If you find misinformation, you must educate the user by identifying the manipulation technique used (e.g., Fabricated Fact, Out of Context, Emotional Appeal, Clickbait).
       
       Return ONLY a raw JSON object:
       {
         "containsMisinformation": true,
-        "riskLevel": "High",
+        "riskLevel": "Low", "Medium", or "High",
         "flaggedClaims": [
           {
-            "claim": "The exact false statement found",
-            "correction": "The actual truth",
-            "explanation": "Why this is false."
+            "claim": "The exact false statement found in the text",
+            "correction": "The actual verified truth",
+            "explanation": "Why it is false AND the specific manipulation technique used to trick the reader."
           }
         ]
       }
