@@ -15,56 +15,60 @@ export async function OPTIONS() {
 }
 
 // Handle the actual text analysis
+// Keep your existing OPTIONS function at the top for CORS!
+
 export async function POST(req) {
   try {
-    const { text } = await req.json();
+    // We are now expecting an 'image' from the extension
+    const { image } = await req.json();
 
-    if (!text) {
-      return new Response(JSON.stringify({ error: 'No text provided' }), { status: 400 });
+    if (!image) {
+      return new Response(JSON.stringify({ error: 'No image provided' }), { status: 400 });
     }
 
-    // Initialize Gemini 1.5 Flash with Google Search Grounding enabled
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-1.5-flash',
       tools: [{ googleSearch: {} }] 
     });
 
-    const prompt = `
-      You are an expert fact-checker. You must thoroughly analyze the text below.
-      
-      Step 1: Extract EVERY factual claim made in the text.
-      Step 2: Use Google Search to rigorously verify each claim. 
-      Step 3: If a claim is false, satirical, or fake (for example: FC Barcelona changing kit colors to white, or football rules changing to 15 players/45 minutes), you MUST flag it.
+    // 1. Convert the browser's image format into Gemini's format
+    const base64Data = image.split(',')[1]; 
+    const mimeType = image.split(';')[0].split(':')[1]; 
 
-      Return ONLY a raw JSON object matching this exact structure:
+    const imagePart = {
+      inlineData: { data: base64Data, mimeType }
+    };
+
+    // 2. Tweak the prompt to tell it to look at the image
+    const prompt = `
+      You are an expert fact-checker. I have provided a screenshot of a webpage. 
+      Read the visible text in the screenshot and use Google Search to verify the main claims.
+      
+      Look actively for lies, fake news, and altered facts. 
+      If even ONE claim contradicts reality, you must flag it as misinformation.
+      
+      Return ONLY a JSON object with this exact structure:
       {
-        "containsMisinformation": true, // Set to true if ANY claim is false
+        "containsMisinformation": boolean, 
         "riskLevel": "Low" | "Medium" | "High",
         "flaggedClaims": [
           {
-            "claim": "The exact false statement found in the text",
+            "claim": "The false statement found in the image",
             "correction": "The actual truth based on your web search",
             "explanation": "Brief explanation of why it is false"
           }
         ]
       }
-
-      Text to analyze:
-      """
-      ${text}
-      """
     `;
 
-    const result = await model.generateContent(prompt);
+    // 3. Send BOTH the prompt and the image to Gemini
+    const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
     const cleanedJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     
     return new Response(cleanedJson, {
       status: 200,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*' 
-      },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
 
   } catch (error) {
