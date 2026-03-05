@@ -3,38 +3,25 @@ from flask_cors import CORS
 import vertexai
 from vertexai.generative_models import GenerativeModel, Tool, GoogleSearchRetrieval
 import os
+import json
 
 app = Flask(__name__)
-CORS(app) # This handles the cross-origin errors from your Edge extension
+CORS(app)
 
-# Initialize Vertex AI - You still need your Google Cloud Project ID
-PROJECT_ID = "monestry" #
-vertexai.init(project=PROJECT_ID, location="us-central1")
+# Use the key you just generated in Google Cloud
+if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON"):
+    with open("google_creds.json", "w") as f:
+        f.write(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON"))
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google_creds.json"
+
+vertexai.init(project="monestry", location="us-central1") #
 
 @app.route('/api/verify', methods=['POST'])
 def verify():
-    data = request.json
-    claim = data.get("claim")
-    
-    if not claim:
-        return jsonify({"error": "No claim provided"}), 400
-
-    # Gemini with Search Grounding
-    search_tool = Tool.from_google_search_retrieval(
-        google_search_retrieval=GoogleSearchRetrieval()
-    )
+    claim = request.json.get("claim")
+    search_tool = Tool.from_google_search_retrieval(GoogleSearchRetrieval())
     model = GenerativeModel("gemini-1.5-flash")
-
-    prompt = f"Verify this claim for an Indian audience: '{claim}'. Return JSON: {{'status': 'True/False/Unverified', 'reason': 'short explanation', 'source': 'URL'}}"
     
-    try:
-        response = model.generate_content(prompt, tools=[search_tool])
-        # Clean up Gemini's markdown
-        result = response.text.replace("```json", "").replace("```", "").strip()
-        return result, 200, {'Content-Type': 'application/json'}
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Vercel needs this to route correctly
-def handler(event, context):
-    return app(event, context)
+    prompt = f"Verify this claim for an Indian audience: '{claim}'. Return JSON: {{'status': 'True/False', 'reason': '...', 'source': '...'}}"
+    response = model.generate_content(prompt, tools=[search_tool])
+    return response.text, 200, {'Content-Type': 'application/json'}
