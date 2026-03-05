@@ -30,15 +30,15 @@ export async function POST(req) {
     });
 
     const prompt = `
-      You are a highly skeptical, ruthless fact-checker. You MUST use Google Search to verify the claims in the text below.
+      You are an expert fact-checker. You must thoroughly analyze the text below.
       
-      DO NOT assume the text is true just because it looks like an encyclopedia or news article. 
-      Actively search for lies, fake news, and altered facts. Pay extreme attention to any claims about sports rules (like match length), team colors, or recent "breaking news".
-      If even ONE claim contradicts reality, you must flag it as misinformation.
-      
-      Return ONLY a JSON object with this exact structure:
+      Step 1: Extract EVERY factual claim made in the text.
+      Step 2: Use Google Search to rigorously verify each claim. 
+      Step 3: If a claim is false, satirical, or fake (for example: FC Barcelona changing kit colors to white, or football rules changing to 15 players/45 minutes), you MUST flag it.
+
+      Return ONLY a raw JSON object matching this exact structure:
       {
-        "containsMisinformation": boolean, // MUST be true if you find ANY lie
+        "containsMisinformation": true, // Set to true if ANY claim is false
         "riskLevel": "Low" | "Medium" | "High",
         "flaggedClaims": [
           {
@@ -51,7 +51,7 @@ export async function POST(req) {
 
       Text to analyze:
       """
-      ${text.substring(0, 5000)}
+      ${text}
       """
     `;
 
