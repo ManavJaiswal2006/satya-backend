@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 1. THIS IS THE NEW FIX: Handle the browser's preflight check
+// Handle the browser's preflight CORS check
 export async function OPTIONS() {
   return new Response(null, {
     status: 200,
@@ -14,7 +14,7 @@ export async function OPTIONS() {
   });
 }
 
-// 2. Your existing POST handler
+// Handle the actual text analysis
 export async function POST(req) {
   try {
     const { text } = await req.json();
@@ -23,11 +23,16 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: 'No text provided' }), { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Initialize Gemini 1.5 Flash with Google Search Grounding enabled
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-1.5-flash',
+      tools: [{ googleSearch: {} }] 
+    });
 
     const prompt = `
-      You are an expert fact-checker. Analyze the following text extracted from a webpage.
-      Identify any major factual inaccuracies or misinformation.
+      You are an expert fact-checker with access to Google Search. 
+      Analyze the following text extracted from a webpage. Use Google Search to verify the claims made in the text against reliable, real-world sources.
+      Identify any major factual inaccuracies, fake news, or misinformation.
       
       Return ONLY a JSON object with the following structure:
       {
@@ -36,8 +41,8 @@ export async function POST(req) {
         "flaggedClaims": [
           {
             "claim": "The false statement",
-            "correction": "The actual fact",
-            "explanation": "Brief explanation of why it is false"
+            "correction": "The actual fact based on your web search",
+            "explanation": "Brief explanation of why it is false, citing what you found"
           }
         ]
       }
