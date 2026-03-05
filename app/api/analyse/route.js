@@ -1,8 +1,20 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize the Gemini API with your key (store this in Vercel Environment Variables)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// 1. THIS IS THE NEW FIX: Handle the browser's preflight check
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
+// 2. Your existing POST handler
 export async function POST(req) {
   try {
     const { text } = await req.json();
@@ -11,10 +23,8 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: 'No text provided' }), { status: 400 });
     }
 
-    // Use Gemini 1.5 Flash for fast, cost-effective text processing
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    // Prompt engineering to force a structured JSON output
     const prompt = `
       You are an expert fact-checker. Analyze the following text extracted from a webpage.
       Identify any major factual inaccuracies or misinformation.
@@ -34,27 +44,27 @@ export async function POST(req) {
 
       Text to analyze:
       """
-      ${text.substring(0, 5000)} // Limit characters to avoid token limits on massive pages
+      ${text.substring(0, 5000)}
       """
     `;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    
-    // Clean the markdown formatting if Gemini returns it inside code blocks
     const cleanedJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     
     return new Response(cleanedJson, {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
-        // Important: Allow CORS so your browser extension can talk to Vercel
         'Access-Control-Allow-Origin': '*' 
       },
     });
 
   } catch (error) {
     console.error(error);
-    return new Response(JSON.stringify({ error: 'Failed to process request' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Failed to process request' }), { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }
