@@ -19,7 +19,7 @@ export async function POST(req) {
     if (!text) return new Response(JSON.stringify({ error: 'No text provided' }), { status: 400 });
 
     // FIX: Removed the googleSearch tool that was causing the 500 crash!
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
     const prompt = `
       You are a RUTHLESS fact-checker. 
@@ -41,15 +41,15 @@ export async function POST(req) {
 
     const result = await model.generateContent(prompt + "\n\nTEXT TO CHECK:\n" + text);
     const responseText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     return new Response(responseText, {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: { 'Access-Control-Allow-Origin': '*' } 
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
     });
   }
 }
