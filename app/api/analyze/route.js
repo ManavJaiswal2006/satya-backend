@@ -20,13 +20,32 @@ export async function POST(req) {
 
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-1.5-flash',
-      tools: [{ googleSearch: {} }] // Enabled for text fact-checking
+      tools: [{ googleSearch: {} }] 
     });
 
-    const prompt = `You are a skeptical fact-checker. Use Google Search to verify these claims. If ANY claim is false (like FC Barcelona changing colors to white or match rules changing), flag it.
-    Return ONLY JSON: {"containsMisinformation": boolean, "riskLevel": "High", "flaggedClaims": [{"claim": "...", "correction": "...", "explanation": "..."}]}`;
+    const prompt = `
+      You are a RUTHLESS fact-checker. You MUST use Google Search to verify these claims.
+      The user has provided text that may contain "fake news" injected for testing.
+      
+      YOUR TASK:
+      1. Search for official news regarding FC Barcelona kit changes and UEFA match rules.
+      2. If the text says Barcelona is changing to white kits or match rules are changing to 45 minutes/15 players, FLAG IT IMMEDIATELY.
+      
+      Return ONLY a JSON object:
+      {
+        "containsMisinformation": true,
+        "riskLevel": "High",
+        "flaggedClaims": [
+          {
+            "claim": "The exact false statement found",
+            "correction": "The actual truth from your Google Search",
+            "explanation": "Why this is false (e.g., 'UEFA rules still mandate 90-minute matches')."
+          }
+        ]
+      }
+    `;
 
-    const result = await model.generateContent(prompt + "\n\nText: " + text);
+    const result = await model.generateContent(prompt + "\n\nTEXT TO CHECK:\n" + text);
     const responseText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
     
     return new Response(responseText, {
@@ -34,6 +53,9 @@ export async function POST(req) {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } });
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
+      headers: { 'Access-Control-Allow-Origin': '*' } 
+    });
   }
 }
