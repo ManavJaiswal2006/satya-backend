@@ -16,7 +16,7 @@ export async function POST(req) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     // We bypass the SDK and call the 1.5-flash model directly over the web!
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
     const prompt = `
       You are a RUTHLESS fact-checker. 
